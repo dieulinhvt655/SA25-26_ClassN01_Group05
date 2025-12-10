@@ -15,6 +15,13 @@
 - **Instructor / Supervisor:** M.Sc. Vu Quang Dung
 - **Project Description:**
 Yummy is a food ordering and delivery app that offers a fast, convenient, and personalized experience. Users can search for restaurants, place orders, pay online, and track deliveries in real-time.
+ 
+## 2. Project Goals
+- Create a fast and convenient food ordering and delivery platform
+- Increase customer reach for restaurants/merchants
+- Build an efficient delivery management system for drivers
+- Optimize business performance through data and reporting
+- Integrate chatbot and AI-based recommendations for users
 
-## 2. Goals
+## 3. Scope
 - 
