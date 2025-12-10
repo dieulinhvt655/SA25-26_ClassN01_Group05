@@ -11,7 +11,7 @@ This repository contains all source code and project-related documents for the c
   Contains all design-related documents, covering system architecture, functional design, and database/data design. These files help visualize the system's structure and workflow, ensuring consistency during development.
 
 - **SRC/**  
-  Contains the source code of the project, organized by modules or features.
+  Contains the source code of the project.
 
 - **README.md**  
   Provides an overview of the project, instructions, and other essential information for understanding and using the repository.
