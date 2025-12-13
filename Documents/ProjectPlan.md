@@ -22,16 +22,22 @@ The project's primary objectives are to create a fast and convenient food orderi
 ## 3. Scope
 **3.1. Food ordering and purchasing operations**
 The system is designed to focus on the customer experience and the seamless ordering process. Firstly, the system will allow customers to search for and select restaurants and dishes that meet their needs. Following selection, the platform will support the entire process of creating orders and confirming purchases easily and quickly. Finally, to ensure service accuracy, a crucial function is to ensure that order information is accurately transmitted to the restaurant, thereby initiating the preparation and delivery process.
+
 **3.2. Restaurant Management Operations**
 The system provides comprehensive tools for managing the list of restaurants participating in the platform. This management functionality extends to allowing restaurants to manage food item information, selling prices, and serving status (availability) for their offerings. Crucially, the platform enables restaurants to receive, process, and update order status from customers efficiently.
+
 **3.3. Delivery Operations**
 Effective delivery operations are maintained by the system's ability to distribute (assign) orders to suitable drivers. Following assignment, the platform must track the delivery process from order pickup to completion in real-time. This overall functionality is designed to ensure effective coordination between the restaurant and the driver, guaranteeing timely service.
+
 **3.4. Payment Operations**
 The system’s delivery operations focus on three key areas: distributing orders to suitable drivers, actively tracking the delivery process from order pickup to completion, and ultimately working to ensure effective coordination between the restaurant and the driver.
+
 **3.5. Customer Care and Experience Operations**
 To continuously improve service quality and user satisfaction, the platform is equipped to record customer ratings and feedback. Furthermore, the system is designed to support the resolution of issues arising related to orders. Finally, the platform leverages collected information to personalize the user experience based on behavioral data.
+
 **3.6. Analysis and Reporting Operations**
 The system's analytical capabilities are built to collect data on orders, revenue, and user behavior. This collected data is essential to support restaurants and the system in making informed business decisions. Ultimately, these operations provide a database for optimizing operations and facilitating system expansion.
+
 **3.7. AI integration**
 
 
