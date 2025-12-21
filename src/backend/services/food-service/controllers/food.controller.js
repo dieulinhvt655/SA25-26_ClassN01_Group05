@@ -11,6 +11,7 @@ exports.createFood = (req, res) => {
 };
 
 exports.getFoods = (req, res) => {
+
     try {
         const foods = foodService.getAllFoods();
         res.json(foods);

@@ -4,6 +4,7 @@ let foods = [];
 let nextId = 1;
 
 class FoodRepository {
+
     create(name, price, restaurantId) {
         const food = new Food(nextId++, name, price, restaurantId);
         foods.push(food);

@@ -6,4 +6,6 @@ class Food {
         this.restaurantId = restaurantId;
     }
 }
+
 module.exports = Food;
+

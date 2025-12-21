@@ -8,4 +8,5 @@ app.use('/api/foods', foodRoutes);
 
 app.listen(3001, () => {
     console.log('Food Service running on port 3001');
+
 });
