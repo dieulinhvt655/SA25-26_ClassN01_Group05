@@ -1,39 +1,46 @@
-const Food = require('../models/food.model');
-
-let foods = [];
-let nextId = 1;
+const Food = require('../models/food.sequelize');
 
 class FoodRepository {
 
-    create(name, price, restaurantId) {
-        const food = new Food(nextId++, name, price, restaurantId);
-        foods.push(food);
+    async create(name, price, restaurantId) {
+        const food = await Food.create({
+            name,
+            price,
+            restaurantId
+        });
         return food;
     }
 
-    findAll() {
+    async findAll() {
+        const foods = await Food.findAll({
+            order: [['id', 'ASC']]
+        });
         return foods;
     }
 
-    findById(id) {
-        return foods.find(f => f.id === id);
-    }
-
-    update(id, name, price, restaurantId) {
-        const food = this.findById(id);
-        if (!food) return null;
-
-        if (name !== undefined) food.name = name;
-        if (price !== undefined) food.price = price;
-        if (restaurantId !== undefined) food.restaurantId = restaurantId;
+    async findById(id) {
+        const food = await Food.findByPk(id);
         return food;
     }
 
-    delete(id) {
-        const index = foods.findIndex(f => f.id === id);
-        if (index === -1) return false;
+    async update(id, name, price, restaurantId) {
+        const food = await Food.findByPk(id);
+        if (!food) return null;
 
-        foods.splice(index, 1);
+        const updateData = {};
+        if (name !== undefined) updateData.name = name;
+        if (price !== undefined) updateData.price = price;
+        if (restaurantId !== undefined) updateData.restaurantId = restaurantId;
+
+        await food.update(updateData);
+        return food;
+    }
+
+    async delete(id) {
+        const food = await Food.findByPk(id);
+        if (!food) return false;
+
+        await food.destroy();
         return true;
     }
 }

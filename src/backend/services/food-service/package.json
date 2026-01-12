@@ -1,0 +1,16 @@
+{
+  "name": "food-service",
+  "version": "1.0.0",
+  "description": "Food Service API",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node index.js"
+  },
+  "dependencies": {
+    "dotenv": "^17.2.3",
+    "express": "^4.18.2",
+    "mysql2": "^3.16.0",
+    "sequelize": "^6.37.7"
+  }
+}
