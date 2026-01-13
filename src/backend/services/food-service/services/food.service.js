@@ -1,35 +1,35 @@
 const foodRepository = require('../repositories/food.repository');
 
 class FoodService {
-    createFood(name, price, restaurantId) {
+    async createFood(name, price, restaurantId) {
         if (!name || !price || price <= 0 || !restaurantId) {
             throw new Error('Invalid food data: name, price (>0), and restaurantId are required');
         }
-        return foodRepository.create(name, price, restaurantId);
+        return await foodRepository.create(name, price, restaurantId);
     }
 
-    getAllFoods() {
-        return foodRepository.findAll();
+    async getAllFoods() {
+        return await foodRepository.findAll();
     }
 
-    getFoodById(id) {
-        const food = foodRepository.findById(id);
+    async getFoodById(id) {
+        const food = await foodRepository.findById(id);
         if (!food) {
             throw new Error('Food not found');
         }
         return food;
     }
 
-    updateFood(id, name, price, restaurantId) {
-        const food = foodRepository.update(id, name, price, restaurantId);
+    async updateFood(id, name, price, restaurantId) {
+        const food = await foodRepository.update(id, name, price, restaurantId);
         if (!food) {
             throw new Error('Food not found');
         }
         return food;
     }
 
-    deleteFood(id) {
-        const success = foodRepository.delete(id);
+    async deleteFood(id) {
+        const success = await foodRepository.delete(id);
         if (!success) {
             throw new Error('Food not found');
         }
