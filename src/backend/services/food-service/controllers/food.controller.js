@@ -1,48 +1,30 @@
 const foodService = require('../services/food.service');
+const { asyncHandler } = require('../middleware/errorHandler');
 
-exports.createFood = async (req, res) => {
-    try {
-        const { name, price, restaurantId } = req.body;
-        const food = await foodService.createFood(name, price, restaurantId);
-        res.status(201).json(food);
-    } catch (err) {
-        res.status(400).json({ error: err.message });
-    }
-};
+// Validation đã được xử lý ở middleware, nên controllers chỉ cần gọi service
+exports.createFood = asyncHandler(async (req, res) => {
+    const { name, price, restaurantId } = req.body;
+    const food = await foodService.createFood(name, price, restaurantId);
+    res.status(201).json(food);
+});
 
-exports.getFoods = async (req, res) => {
-    try {
-        const foods = await foodService.getAllFoods();
-        res.json(foods);
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-};
+exports.getFoods = asyncHandler(async (req, res) => {
+    const foods = await foodService.getAllFoods();
+    res.json(foods);
+});
 
-exports.getFood = async (req, res) => {
-    try {
-        const food = await foodService.getFoodById(parseInt(req.params.id));
-        res.json(food);
-    } catch (err) {
-        res.status(404).json({ error: err.message });
-    }
-};
+exports.getFood = asyncHandler(async (req, res) => {
+    const food = await foodService.getFoodById(req.params.id);
+    res.json(food);
+});
 
-exports.updateFood = async (req, res) => {
-    try {
-        const { name, price, restaurantId } = req.body;
-        const food = await foodService.updateFood(parseInt(req.params.id), name, price, restaurantId);
-        res.json(food);
-    } catch (err) {
-        res.status(404).json({ error: err.message });
-    }
-};
+exports.updateFood = asyncHandler(async (req, res) => {
+    const { name, price, restaurantId } = req.body;
+    const food = await foodService.updateFood(req.params.id, name, price, restaurantId);
+    res.json(food);
+});
 
-exports.deleteFood = async (req, res) => {
-    try {
-        await foodService.deleteFood(parseInt(req.params.id));
-        res.status(200).json({ message: 'Food deleted successfully' });
-    } catch (err) {
-        res.status(404).json({ error: err.message });
-    }
-};
+exports.deleteFood = asyncHandler(async (req, res) => {
+    await foodService.deleteFood(req.params.id);
+    res.status(200).json({ message: 'Food deleted successfully' });
+});
