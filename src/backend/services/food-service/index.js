@@ -1,9 +1,12 @@
 require('dotenv').config();
 const express = require('express');
 const foodRoutes = require('./routes/food.routes');
+const categoryRoutes = require('./routes/category.routes');
+const foodReviewRoutes = require('./routes/foodReview.routes');
 const healthRoutes = require('./routes/health.routes');
 const { sequelize, testConnection } = require('./config/database');
-const Food = require('./models/food.sequelize');
+// Import models to register associations
+require('./models/associations');
 const { errorHandler, notFoundHandler } = require('./middleware/errorHandler');
 
 const app = express();
@@ -15,6 +18,8 @@ app.use(express.urlencoded({ extended: true }));
 // Routes
 app.use('/health', healthRoutes);
 app.use('/api/foods', foodRoutes);
+app.use('/api/categories', categoryRoutes);
+app.use('/api/food-reviews', foodReviewRoutes);
 
 // 404 Handler - phải đặt sau tất cả routes
 app.use(notFoundHandler);

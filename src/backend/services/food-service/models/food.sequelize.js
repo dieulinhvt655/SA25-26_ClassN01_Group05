@@ -25,6 +25,27 @@ const Food = sequelize.define('Food', {
         type: DataTypes.INTEGER,
         allowNull: false,
         field: 'restaurant_id'
+    },
+    categoryId: {
+        type: DataTypes.INTEGER,
+        allowNull: true,
+        field: 'category_id',
+        references: {
+            model: 'categories',
+            key: 'id'
+        }
+    },
+    description: {
+        type: DataTypes.TEXT,
+        allowNull: true
+    },
+    imageUrl: {
+        type: DataTypes.STRING,
+        allowNull: true,
+        validate: {
+            isUrl: true
+        },
+        field: 'image_url'
     }
 }, {
     tableName: 'foods',

@@ -2,9 +2,9 @@ const foodRepository = require('../repositories/food.repository');
 const { NotFoundError, DatabaseError, ValidationError } = require('../utils/errors');
 
 class FoodService {
-    async createFood(name, price, restaurantId) {
+    async createFood(name, price, restaurantId, categoryId, description, imageUrl) {
         try {
-            return await foodRepository.create(name, price, restaurantId);
+            return await foodRepository.create(name, price, restaurantId, categoryId, description, imageUrl);
         } catch (error) {
             // Handle Sequelize validation errors
             if (error.name === 'SequelizeValidationError') {
@@ -52,9 +52,9 @@ class FoodService {
         }
     }
 
-    async updateFood(id, name, price, restaurantId) {
+    async updateFood(id, name, price, restaurantId, categoryId, description, imageUrl) {
         try {
-            const food = await foodRepository.update(id, name, price, restaurantId);
+            const food = await foodRepository.update(id, name, price, restaurantId, categoryId, description, imageUrl);
             if (!food) {
                 throw new NotFoundError('Food');
             }

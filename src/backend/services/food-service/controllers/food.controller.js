@@ -3,8 +3,8 @@ const { asyncHandler } = require('../middleware/errorHandler');
 
 // Validation đã được xử lý ở middleware, nên controllers chỉ cần gọi service
 exports.createFood = asyncHandler(async (req, res) => {
-    const { name, price, restaurantId } = req.body;
-    const food = await foodService.createFood(name, price, restaurantId);
+    const { name, price, restaurantId, categoryId, description, imageUrl } = req.body;
+    const food = await foodService.createFood(name, price, restaurantId, categoryId, description, imageUrl);
     res.status(201).json(food);
 });
 
@@ -19,8 +19,8 @@ exports.getFood = asyncHandler(async (req, res) => {
 });
 
 exports.updateFood = asyncHandler(async (req, res) => {
-    const { name, price, restaurantId } = req.body;
-    const food = await foodService.updateFood(req.params.id, name, price, restaurantId);
+    const { name, price, restaurantId, categoryId, description, imageUrl } = req.body;
+    const food = await foodService.updateFood(req.params.id, name, price, restaurantId, categoryId, description, imageUrl);
     res.json(food);
 });
 

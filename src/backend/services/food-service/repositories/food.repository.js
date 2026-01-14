@@ -2,11 +2,14 @@ const Food = require('../models/food.sequelize');
 
 class FoodRepository {
 
-    async create(name, price, restaurantId) {
+    async create(name, price, restaurantId, categoryId, description, imageUrl) {
         const food = await Food.create({
             name,
             price,
-            restaurantId
+            restaurantId,
+            categoryId,
+            description,
+            imageUrl
         });
         return food;
     }
@@ -23,7 +26,7 @@ class FoodRepository {
         return food;
     }
 
-    async update(id, name, price, restaurantId) {
+    async update(id, name, price, restaurantId, categoryId, description, imageUrl) {
         const food = await Food.findByPk(id);
         if (!food) return null;
 
@@ -31,6 +34,9 @@ class FoodRepository {
         if (name !== undefined) updateData.name = name;
         if (price !== undefined) updateData.price = price;
         if (restaurantId !== undefined) updateData.restaurantId = restaurantId;
+        if (categoryId !== undefined) updateData.categoryId = categoryId;
+        if (description !== undefined) updateData.description = description;
+        if (imageUrl !== undefined) updateData.imageUrl = imageUrl;
 
         await food.update(updateData);
         return food;
