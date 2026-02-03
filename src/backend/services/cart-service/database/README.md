@@ -18,6 +18,13 @@ mysql -u root -p < database/cart-service-init.sql
 
 (Nhập password MySQL khi được hỏi. Nếu root không có password: `mysql -u root < database/cart-service-init.sql`)
 
+**Nếu bảng `cart_items` đã tồn tại với `food_id INT`** (từ khi dùng food-service), cần đổi sang UUID (restaurant-service):
+
+```sql
+USE cart_service_db;
+ALTER TABLE cart_items MODIFY food_id VARCHAR(36) NOT NULL COMMENT 'UUID từ restaurant-service menu_items.id';
+```
+
 Hoặc trong MySQL client:
 
 ```sql
@@ -38,7 +45,7 @@ SOURCE /đường/dẫn/đến/database/cart-service-init.sql;
 ### Bảng `cart_items`
 - `cart_item_id` (INT, PRIMARY KEY, AUTO_INCREMENT)
 - `cart_id` (INT, FOREIGN KEY -> carts.cart_id, ON DELETE CASCADE)
-- `food_id` (INT, NOT NULL)
+- `food_id` (VARCHAR(36), NOT NULL) — UUID từ restaurant-service (menu_items.id)
 - `food_name` (VARCHAR(255), NOT NULL)
 - `food_image` (VARCHAR(500))
 - `unit_price` (DECIMAL(10,2), DEFAULT 0.00)

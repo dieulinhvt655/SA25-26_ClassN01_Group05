@@ -20,7 +20,7 @@ CREATE TABLE IF NOT EXISTS carts (
 CREATE TABLE IF NOT EXISTS cart_items (
     cart_item_id INT AUTO_INCREMENT PRIMARY KEY,
     cart_id INT NOT NULL,
-    food_id INT NOT NULL,
+    food_id VARCHAR(36) NOT NULL COMMENT 'UUID từ restaurant-service menu_items.id',
     food_name VARCHAR(255) NOT NULL,
     food_image VARCHAR(500) DEFAULT NULL,
     unit_price DECIMAL(10, 2) NOT NULL DEFAULT 0.00,

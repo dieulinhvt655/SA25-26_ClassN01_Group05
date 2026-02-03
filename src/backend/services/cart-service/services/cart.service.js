@@ -1,6 +1,6 @@
 const cartRepository = require('../repositories/cart.repository');
 const cartItemRepository = require('../repositories/cart-item.repository');
-const foodServiceClient = require('../clients/food-service.client');
+const restaurantServiceClient = require('../clients/restaurant-service.client');
 const { calculateItemSubtotal } = require('../utils/cart.utils');
 const CartItem = require('../models/cart-item.model');
 
@@ -33,7 +33,7 @@ async function createCart(userId) {
 
 /**
  * Nghiệp vụ 4.2: Thêm món vào giỏ.
- * - Gọi Food-service: kiểm tra món tồn tại, lấy thông tin (tên, giá, trạng thái bán).
+ * - Gọi Restaurant-service: kiểm tra món tồn tại (MenuItem), lấy thông tin (tên, giá, trạng thái bán).
  * - Nếu món không hợp lệ → trả lỗi.
  * - Nếu món hợp lệ: nếu đã có trong giỏ → tăng số lượng; chưa có → tạo CartItem mới.
  * - Cập nhật tổng tiền giỏ hàng. Trả về giỏ hàng mới nhất.
@@ -49,7 +49,7 @@ async function addItemToCart(userId, foodId, quantity = 1) {
         throw new Error('Quantity must be at least 1');
     }
 
-    const food = await foodServiceClient.getFoodById(foodId);
+    const food = await restaurantServiceClient.getFoodById(foodId);
     if (!food.foodName || food.unitPrice < 0) {
         throw new Error('Food data invalid');
     }
@@ -172,7 +172,7 @@ async function recalculateCartTotals(cartId) {
 
 /**
  * Nghiệp vụ 4.6: Kiểm tra giỏ trước khi đặt hàng (Validate Cart).
- * - Kiểm tra từng CartItem: trạng thái bán, giá hiện tại (gọi Food-service).
+ * - Kiểm tra từng CartItem: trạng thái bán, giá hiện tại (gọi Restaurant-service).
  * - Nếu có món không hợp lệ: đánh dấu lỗi, trả danh sách món cần chỉnh sửa.
  * - Nếu hợp lệ: trả kết quả giỏ hợp lệ.
  * @returns { valid: boolean, itemsToFix?: Array<{ cartItemId, foodId, foodName, reason, currentPrice?, currentAvailable? }> }
@@ -193,7 +193,7 @@ async function validateCart(userId) {
     for (const item of items) {
         let food;
         try {
-            food = await foodServiceClient.getFoodById(item.foodId);
+            food = await restaurantServiceClient.getFoodById(item.foodId);
         } catch (err) {
             itemsToFix.push({
                 cartItemId: item.cartItemId,
