@@ -5,8 +5,9 @@ const orderService = require('../services/order.service');
  */
 exports.createOrder = async (req, res) => {
     try {
-        const userId = req.body.userId;
-        const order = await orderService.createOrder(userId);
+        const { userId, deliveryAddress, paymentMethod, deliveryFee } = req.body;
+        const shippingInfo = { deliveryAddress, paymentMethod, deliveryFee };
+        const order = await orderService.createOrder(userId, shippingInfo);
         res.status(201).json(order);
     } catch (err) {
         if (err.code === 'CART_INVALID') {
@@ -23,7 +24,7 @@ exports.createOrder = async (req, res) => {
 };
 
 /**
- * GET /orders/:orderId - Xem chi tiết đơn hàng (2.1).
+ * GET /orders/:orderId - Xem chi tiết đơn hàng .
  */
 exports.getOrderById = async (req, res) => {
     try {
@@ -43,15 +44,12 @@ exports.getOrderById = async (req, res) => {
  */
 exports.listOrders = async (req, res) => {
     try {
-        const userId = req.query.userId;
+        const userId = req.query.userId || null;
         const status = req.query.status || null;
         const limit = parseInt(req.query.limit, 10) || 50;
         const orders = await orderService.getOrders(userId, status, limit);
         res.json(orders);
     } catch (err) {
-        if (err.message === 'UserId is required') {
-            return res.status(400).json({ error: err.message });
-        }
         res.status(500).json({ error: err.message });
     }
 };

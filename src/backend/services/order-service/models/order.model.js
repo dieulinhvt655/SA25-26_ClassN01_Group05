@@ -1,41 +1,57 @@
 /**
- * Order Model - Chỉ chứa định nghĩa đối tượng, không có business logic
+ * Order Model
  */
 class Order {
     constructor(data = {}) {
-        this.orderId = data.orderId || null;
+        this.id = data.id || null;
         this.userId = data.userId || null;
-        this.cartId = data.cartId || null;
-        this.status = data.status || 'pending_payment'; // pending_payment, pending, confirmed, completed, cancelled
-        this.totalAmount = data.totalAmount || 0;
-        this.totalItems = data.totalItems || 0;
-        this.createdAt = data.createdAt || new Date().toISOString();
-        this.updatedAt = data.updatedAt || new Date().toISOString();
+        this.restaurantId = data.restaurantId || null;
+        this.status = data.status || 'CREATED'; // CREATED, PAID, CONFIRMED, COMPLETED, CANCELLED
+        this.totalPrice = data.totalPrice || 0;
+        this.discountAmount = data.discountAmount || 0;
+        this.finalPrice = data.finalPrice || 0;
+        this.deliveryFee = data.deliveryFee || 0;
+        this.deliveryAddress = data.deliveryAddress || null;
+        this.paymentMethod = data.paymentMethod || null;
+        this.paymentStatus = data.paymentStatus || 'PENDING';
+        this.createdAt = data.createdAt || null;
+        this.updatedAt = data.updatedAt || null;
     }
 
     toJSON() {
         return {
-            orderId: this.orderId,
+            id: this.id,
             userId: this.userId,
-            cartId: this.cartId,
+            restaurantId: this.restaurantId,
             status: this.status,
-            totalAmount: this.totalAmount,
-            totalItems: this.totalItems,
+            totalPrice: this.totalPrice,
+            discountAmount: this.discountAmount,
+            finalPrice: this.finalPrice,
+            deliveryFee: this.deliveryFee,
+            deliveryAddress: this.deliveryAddress,
+            paymentMethod: this.paymentMethod,
+            paymentStatus: this.paymentStatus,
             createdAt: this.createdAt,
             updatedAt: this.updatedAt
         };
     }
 
     static fromDatabase(row) {
+        if (!row) return null;
         return new Order({
-            orderId: row.orderId || row.order_id,
-            userId: row.userId || row.user_id,
-            cartId: row.cartId || row.cart_id,
+            id: row.id,
+            userId: row.user_id,
+            restaurantId: row.restaurant_id,
             status: row.status,
-            totalAmount: row.totalAmount || row.total_amount || 0,
-            totalItems: row.totalItems || row.total_items || 0,
-            createdAt: row.createdAt || row.created_at,
-            updatedAt: row.updatedAt || row.updated_at
+            totalPrice: parseFloat(row.total_price) || 0,
+            discountAmount: parseFloat(row.discount_amount) || 0,
+            finalPrice: parseFloat(row.final_price) || 0,
+            deliveryFee: parseFloat(row.delivery_fee) || 0,
+            deliveryAddress: row.delivery_address,
+            paymentMethod: row.payment_method,
+            paymentStatus: row.payment_status,
+            createdAt: row.created_at,
+            updatedAt: row.updated_at
         });
     }
 }
