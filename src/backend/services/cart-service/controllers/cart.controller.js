@@ -19,7 +19,8 @@ exports.createCart = async (req, res) => {
 exports.addItemToCart = async (req, res) => {
     try {
         const userId = req.body.userId;
-        const foodId = parseInt(req.body.foodId, 10);
+        // foodId là UUID (string) từ restaurant-service, không ép kiểu số
+        const foodId = req.body.foodId;
         const quantity = parseInt(req.body.quantity, 10) || 1;
         const cart = await cartService.addItemToCart(userId, foodId, quantity);
         res.status(201).json(cart);
@@ -47,7 +48,8 @@ exports.getCartByUserId = async (req, res) => {
 exports.updateItemQuantity = async (req, res) => {
     try {
         const userId = req.body.userId;
-        const foodId = parseInt(req.params.foodId, 10);
+        // foodId là UUID (string) từ restaurant-service
+        const foodId = req.params.foodId;
         const quantity = parseInt(req.body.quantity, 10);
         const cart = await cartService.updateItemQuantity(userId, foodId, quantity);
         res.json(cart);
@@ -62,7 +64,8 @@ exports.updateItemQuantity = async (req, res) => {
 exports.removeItemFromCart = async (req, res) => {
     try {
         const userId = req.body.userId;
-        const foodId = parseInt(req.params.foodId, 10);
+        // foodId là UUID (string) từ restaurant-service
+        const foodId = req.params.foodId;
         const cart = await cartService.removeItemFromCart(userId, foodId);
         res.json(cart);
     } catch (err) {

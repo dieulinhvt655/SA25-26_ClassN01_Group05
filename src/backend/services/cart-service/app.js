@@ -55,7 +55,7 @@ const HOST = process.env.HOST || 'localhost';
 
 db.testConnection().then(connected => {
     if (!connected) {
-        console.error('⚠️  Warning: Database connection failed.');
+        console.error('Warning: Database connection failed.');
     }
     app.listen(PORT, HOST, () => {
         console.log('='.repeat(50));
