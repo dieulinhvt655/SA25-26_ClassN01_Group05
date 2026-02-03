@@ -1,146 +1,157 @@
 #!/bin/bash
 
-# Script để chạy tất cả services của dự án
-# Sử dụng: chmod +x start.sh && ./start.sh
+# ==========================================================
+#  Yummy Food Delivery - Service Management Script
+# ==========================================================
+# Usage: 
+#   ./start.sh start   - Start all backend services
+#   ./start.sh stop    - Stop all backend services
+#   ./start.sh restart - Restart all services
+#   ./start.sh status  - Check status of services
+# ==========================================================
 
-echo "=========================================="
-echo "  Khởi động Yummy Food Delivery Services"
-echo "=========================================="
-echo ""
-
-# Màu sắc cho output
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 RED='\033[0;31m'
 NC='\033[0m' # No Color
 
-# Kiểm tra MySQL
-echo -e "${YELLOW}Kiểm tra MySQL...${NC}"
-if ! mysql -u root -e "SELECT 1" > /dev/null 2>&1; then
-    echo -e "${RED}❌ MySQL không thể kết nối. Vui lòng kiểm tra MySQL đang chạy và mật khẩu trong file .env${NC}"
-    exit 1
-fi
-echo -e "${GREEN}✅ MySQL đang chạy${NC}"
-echo ""
+BASE_DIR=$(pwd)/src/backend/services
+LOG_DIR=$(pwd)/logs
+mkdir -p "$LOG_DIR"
 
-# Kiểm tra database
-echo -e "${YELLOW}Kiểm tra database...${NC}"
-if ! mysql -u root -e "USE food_service_db" > /dev/null 2>&1; then
-    echo -e "${YELLOW}⚠️  Database chưa tồn tại, đang tạo...${NC}"
-    mysql -u root -e "CREATE DATABASE IF NOT EXISTS food_service_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;" 2>/dev/null
-    if [ $? -eq 0 ]; then
-        echo -e "${GREEN}✅ Database đã được tạo${NC}"
+# format: "service_name:port"
+SERVICES=(
+    "api-gateway:3000"
+    "cart-service:3002"
+    "order-service:3003"
+    "restaurant-service:3004"
+    "notification-service:3005"
+    "discovery-service:3006"
+    "user-service:3007"
+    "promotion-service:3008"
+    "review-service:3009"
+)
+
+# Function to stop all services
+stop_services() {
+    echo -e "${YELLOW}Stopping all services on ports 3000-3009...${NC}"
+    PIDS=$(lsof -ti:3000,3001,3002,3003,3004,3005,3006,3007,3008,3009 2>/dev/null)
+    if [ -n "$PIDS" ]; then
+        echo "$PIDS" | xargs kill -9
+        echo -e "${GREEN}✅ All services have been stopped.${NC}"
     else
-        echo -e "${RED}❌ Không thể tạo database. Vui lòng kiểm tra quyền MySQL${NC}"
+        echo -e "${YELLOW}No services were found running.${NC}"
+    fi
+}
+
+# Function to start all services
+start_services() {
+    echo -e "${YELLOW}Checking MySQL connection...${NC}"
+    if ! mysql -u root -e "SELECT 1" > /dev/null 2>&1; then
+        echo -e "${RED}❌ MySQL is not running or accessible. Please start MySQL.${NC}"
         exit 1
     fi
-else
-    echo -e "${GREEN}✅ Database đã tồn tại${NC}"
-fi
-echo ""
+    echo -e "${GREEN}✅ MySQL is running.${NC}"
 
-# Kiểm tra file .env
-FOOD_SERVICE_DIR="src/backend/services/food-service"
-if [ ! -f "$FOOD_SERVICE_DIR/.env" ]; then
-    echo -e "${YELLOW}⚠️  File .env chưa tồn tại${NC}"
-    echo "Vui lòng tạo file .env trong $FOOD_SERVICE_DIR với nội dung:"
-    echo ""
-    echo "DB_NAME=food_service_db"
-    echo "DB_USER=root"
-    echo "DB_PASSWORD=your_mysql_password"
-    echo "DB_HOST=localhost"
-    echo "DB_PORT=3306"
-    echo "PORT=3001"
-    echo "NODE_ENV=development"
-    echo ""
-    read -p "Bạn có muốn tiếp tục chạy với biến môi trường mặc định không? (y/n): " -n 1 -r
-    echo ""
-    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-        exit 1
-    fi
-fi
+    # Create databases if they don't exist
+    echo -e "${YELLOW}Ensuring databases exist...${NC}"
+    mysql -u root -e "CREATE DATABASE IF NOT EXISTS api_gateway_db; CREATE DATABASE IF NOT EXISTS cart_service_db; CREATE DATABASE IF NOT EXISTS order_service_db; CREATE DATABASE IF NOT EXISTS restaurant_service_db; CREATE DATABASE IF NOT EXISTS notification_service_db; CREATE DATABASE IF NOT EXISTS discovery_service_db; CREATE DATABASE IF NOT EXISTS user_service_db; CREATE DATABASE IF NOT EXISTS promotion_service_db; CREATE DATABASE IF NOT EXISTS review_service_db;"
 
-# Kiểm tra dependencies
-echo -e "${YELLOW}Kiểm tra dependencies...${NC}"
-if [ ! -d "$FOOD_SERVICE_DIR/node_modules" ]; then
-    echo -e "${YELLOW}⚠️  Đang cài đặt dependencies cho Food Service...${NC}"
-    cd "$FOOD_SERVICE_DIR" && npm install
-    cd - > /dev/null
-fi
+    echo -e "${YELLOW}Starting all services...${NC}"
 
-if [ ! -d "src/backend/services/api-gateway/node_modules" ]; then
-    echo -e "${YELLOW}⚠️  Đang cài đặt dependencies cho API Gateway...${NC}"
-    cd src/backend/services/api-gateway && npm install
-    cd - > /dev/null
-fi
-echo -e "${GREEN}✅ Dependencies đã sẵn sàng${NC}"
-echo ""
+    for item in "${SERVICES[@]}"; do
+        SERVICE="${item%%:*}"
+        PORT="${item##*:}"
+        DIR="$BASE_DIR/$SERVICE"
+        
+        if [ ! -d "$DIR" ]; then
+            echo -e "${RED}Directory $DIR not found, skipping $SERVICE${NC}"
+            continue
+        fi
 
-# Kiểm tra port đang sử dụng
-echo -e "${YELLOW}Kiểm tra ports...${NC}"
-if lsof -ti:3001 > /dev/null 2>&1; then
-    echo -e "${YELLOW}⚠️  Port 3001 đang được sử dụng. Đang dừng process...${NC}"
-    lsof -ti:3001 | xargs kill -9 2>/dev/null
-    sleep 2
-fi
+        echo -e "${YELLOW}Setting up $SERVICE (Port $PORT)...${NC}"
+        
+        # Create .env if it doesn't exist
+        if [ ! -f "$DIR/.env" ]; then
+            DB_NAME="${SERVICE//-/_}_db"
+            cat > "$DIR/.env" << EOF
+PORT=$PORT
+NODE_ENV=development
+DB_HOST=localhost
+DB_PORT=3306
+DB_NAME=$DB_NAME
+DB_USER=root
+DB_PASSWORD=
+CART_SERVICE_URL=http://localhost:3002
+RESTAURANT_SERVICE_URL=http://localhost:3004
+ORDER_SERVICE_URL=http://localhost:3003
+USER_SERVICE_URL=http://localhost:3007
+EOF
+            echo -e "${GREEN}  - Created .env for $SERVICE${NC}"
+        fi
 
-if lsof -ti:3000 > /dev/null 2>&1; then
-    echo -e "${YELLOW}⚠️  Port 3000 đang được sử dụng. Đang dừng process...${NC}"
-    lsof -ti:3000 | xargs kill -9 2>/dev/null
-    sleep 2
-fi
-echo -e "${GREEN}✅ Ports sẵn sàng${NC}"
-echo ""
+        # Install dependencies if node_modules missing
+        if [ ! -d "$DIR/node_modules" ]; then
+            echo -e "${YELLOW}  - Installing dependencies for $SERVICE...${NC}"
+            (cd "$DIR" && npm install) > /dev/null 2>&1
+        fi
 
-# Khởi động Food Service
-echo -e "${YELLOW}🚀 Khởi động Food Service (port 3001)...${NC}"
-cd "$FOOD_SERVICE_DIR"
-npm start > /tmp/food-service.log 2>&1 &
-FOOD_PID=$!
-cd - > /dev/null
-sleep 3
+        # Stop if port is in use
+        if lsof -ti:"$PORT" > /dev/null 2>&1; then
+            lsof -ti:"$PORT" | xargs kill -9
+        fi
 
-# Kiểm tra Food Service đã chạy
-if curl -s http://localhost:3001/api/foods > /dev/null 2>&1; then
-    echo -e "${GREEN}✅ Food Service đã khởi động thành công (PID: $FOOD_PID)${NC}"
-else
-    echo -e "${RED}❌ Food Service không thể khởi động. Kiểm tra log: /tmp/food-service.log${NC}"
-    exit 1
-fi
-echo ""
+        # Start service
+        echo -e "${GREEN}  - Starting $SERVICE...${NC}"
+        (cd "$DIR" && npm start) > "$LOG_DIR/$SERVICE.log" 2>&1 &
+    done
 
-# Khởi động API Gateway
-echo -e "${YELLOW}🚀 Khởi động API Gateway (port 3000)...${NC}"
-cd src/backend/services/api-gateway
-npm start > /tmp/api-gateway.log 2>&1 &
-GATEWAY_PID=$!
-cd - > /dev/null
-sleep 3
+    echo -e "\n${GREEN}==========================================${NC}"
+    echo -e "${GREEN}✅ All services have been started!${NC}"
+    echo -e "${GREEN}==========================================${NC}"
+    echo -e "📡 API Gateway: http://localhost:3000"
+    echo -e "📝 Logs folder: $LOG_DIR"
+}
 
-# Kiểm tra API Gateway đã chạy
-if curl -s http://localhost:3000/health > /dev/null 2>&1; then
-    echo -e "${GREEN}✅ API Gateway đã khởi động thành công (PID: $GATEWAY_PID)${NC}"
-else
-    echo -e "${RED}❌ API Gateway không thể khởi động. Kiểm tra log: /tmp/api-gateway.log${NC}"
-    kill $FOOD_PID 2>/dev/null
-    exit 1
-fi
-echo ""
+# Function to check status
+check_status() {
+    echo -e "${YELLOW}Service Status Check:${NC}"
+    printf "%-25s %-10s %-10s\n" "Service Name" "Port" "Status"
+    printf "%s\n" "----------------------------------------------------"
+    for item in "${SERVICES[@]}"; do
+        SERVICE="${item%%:*}"
+        PORT="${item##*:}"
+        if lsof -ti:"$PORT" > /dev/null 2>&1; then
+            echo -e printf "%-25s %-10s ${GREEN}%-10s${NC}\n" "$SERVICE" "$PORT" "RUNNING"
+        else
+            echo -e printf "%-25s %-10s ${RED}%-10s${NC}\n" "$SERVICE" "$PORT" "STOPPED"
+        fi
+    done
+}
 
-echo "=========================================="
-echo -e "${GREEN}✅ Tất cả services đã khởi động thành công!${NC}"
-echo "=========================================="
-echo ""
-echo "📡 Endpoints:"
-echo "  - Food Service:     http://localhost:3001/api/foods"
-echo "  - API Gateway:      http://localhost:3000/api/foods"
-echo "  - Health Check:     http://localhost:3000/health"
-echo ""
-echo "📝 Logs:"
-echo "  - Food Service:     /tmp/food-service.log"
-echo "  - API Gateway:      /tmp/api-gateway.log"
-echo ""
-echo "🛑 Để dừng services, chạy:"
-echo "  kill $FOOD_PID $GATEWAY_PID"
-echo "  hoặc: lsof -ti:3001,3000 | xargs kill -9"
-echo ""
+# Main logic based on arguments
+case "$1" in
+    start)
+        start_services
+        ;;
+    stop)
+        stop_services
+        ;;
+    restart)
+        stop_services
+        sleep 2
+        start_services
+        ;;
+    status)
+        check_status
+        ;;
+    *)
+        # Default behavior: if no arg, start services
+        if [ -z "$1" ]; then
+            start_services
+        else
+            echo "Usage: $0 {start|stop|restart|status}"
+            exit 1
+        fi
+        ;;
+esac

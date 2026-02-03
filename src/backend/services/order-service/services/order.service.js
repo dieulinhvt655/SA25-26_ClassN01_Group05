@@ -1,7 +1,4 @@
-/**
- * Order Service - nghiệp vụ sẽ được xây dựng lại từ đầu.
- * Hiện tại tất cả các hàm chỉ là stub và chưa triển khai logic.
- */
+
 
 async function createOrder(/* userId */) {
     throw new Error('OrderService.createOrder is not implemented yet');
