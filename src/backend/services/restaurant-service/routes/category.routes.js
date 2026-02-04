@@ -9,7 +9,7 @@ router.get('/restaurants/:restaurantId/categories', categoryController.getCatego
 // POST /restaurants/:restaurantId/categories - Tạo danh mục mới
 router.post('/restaurants/:restaurantId/categories', categoryController.createCategory);
 
-// PUT /categories/:id - Cập nhật danh mục
+// PUT /categories/:id - Cập nhật danh mục 
 router.put('/categories/:id', categoryController.updateCategory);
 
 // DELETE /categories/:id - Xóa danh mục
