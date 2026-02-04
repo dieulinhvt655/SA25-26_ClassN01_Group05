@@ -11,6 +11,14 @@ class ItemService {
             throw new Error('Không tìm thấy danh mục');
         }
 
+        // DEBUG: Log dữ liệu nhận được
+        console.log('=== DEBUG createItem ===');
+        console.log('categoryId:', categoryId);
+        console.log('data received:', data);
+        console.log('data.name:', data.name);
+        console.log('typeof data:', typeof data);
+        console.log('========================');
+
         // Validate dữ liệu
         if (!data.name || data.name.trim() === '') {
             throw new Error('Tên món ăn là bắt buộc');
