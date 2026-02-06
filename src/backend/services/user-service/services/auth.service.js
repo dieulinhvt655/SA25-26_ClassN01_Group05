@@ -3,121 +3,222 @@
  * AUTH SERVICE - XỬ LÝ LOGIC XÁC THỰC
  * ===========================================
  * 
- * Service này chứa toàn bộ business logic cho việc xác thực:
- * - register(): Đăng ký tài khoản mới
- * - login(): Đăng nhập và tạo JWT token
- * 
- * QUAN TRỌNG: 
- * - Mật khẩu được mã hóa bằng bcrypt trước khi lưu
- * - JWT Token chứa {userId, role} để các service khác biết user là ai
+ * Enhanced version với:
+ * - Kiểm tra trạng thái tài khoản (status)
+ * - Hỗ trợ OTP verification
+ * - Token blacklist
  */
 
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const User = require('../models/user.model');
+const TokenBlacklist = require('../models/token-blacklist.model');
+const otpService = require('./otp.service');
 
-// Số rounds để hash password (càng cao càng an toàn nhưng chậm hơn)
 const SALT_ROUNDS = 10;
 
 /**
  * ĐĂNG KÝ TÀI KHOẢN MỚI
- * 
- * Quy trình:
- * 1. Kiểm tra email đã tồn tại chưa
- * 2. Mã hóa mật khẩu bằng bcrypt
- * 3. Tạo user mới trong database
- * 4. Trả về thông tin user (không bao gồm password)
- * 
- * @param {string} email - Email đăng ký
- * @param {string} password - Mật khẩu gốc (sẽ được hash)
- * @param {string} role - Vai trò: customer/admin/restaurant_owner
- * @param {string} fullName - Họ tên đầy đủ
- * @returns {Object} Thông tin user đã tạo
  */
-async function register(email, password, role, fullName) {
-    // Bước 1: Kiểm tra email đã được sử dụng chưa
+async function register(email, password, role, fullName, phone = null) {
+    // Kiểm tra email đã tồn tại
     const existingUser = await User.findOne({ where: { email } });
     if (existingUser) {
         throw new Error('Email đã được sử dụng. Vui lòng chọn email khác.');
     }
 
-    // Bước 2: Mã hóa mật khẩu bằng bcrypt
-    // bcrypt.hash() tạo ra một chuỗi hash an toàn từ mật khẩu gốc
+    // Mã hóa password
     const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
 
-    // Bước 3: Tạo user mới trong database
+    // Tạo user mới với status = 'pending' (chờ xác thực OTP)
     const newUser = await User.create({
-        email: email,
+        email,
         password_hash: passwordHash,
-        role: role || 'customer',  // Mặc định là customer nếu không chỉ định
-        full_name: fullName
+        role: role || 'customer',
+        full_name: fullName,
+        phone,
+        status: 'pending'
     });
 
-    // Bước 4: Trả về thông tin user (ẩn password_hash)
+    // Gửi OTP để xác thực email
+    await otpService.generateOTP(email, 'register');
+
     return {
         id: newUser.id,
         email: newUser.email,
         role: newUser.role,
         fullName: newUser.full_name,
-        createdAt: newUser.createdAt
+        status: newUser.status,
+        message: 'Vui lòng kiểm tra email để lấy mã OTP xác thực.'
     };
 }
 
 /**
- * ĐĂNG NHẬP VÀ TẠO JWT TOKEN
- * 
- * Quy trình:
- * 1. Tìm user theo email
- * 2. So sánh mật khẩu với hash trong database
- * 3. Tạo JWT Token chứa {userId, role}
- * 4. Trả về token cho client
- * 
- * @param {string} email - Email đăng nhập
- * @param {string} password - Mật khẩu
- * @returns {Object} { token, user } - JWT token và thông tin user
+ * XÁC THỰC OTP SAU ĐĂNG KÝ
+ */
+async function verifyRegistration(email, otpCode) {
+    // Verify OTP
+    await otpService.verifyOTP(email, otpCode, 'register');
+
+    // Cập nhật status thành active
+    const user = await User.findOne({ where: { email } });
+    if (!user) throw new Error('User không tồn tại');
+
+    await user.update({ status: 'active' });
+
+    // Tạo token
+    const token = jwt.sign(
+        { userId: user.id, role: user.role },
+        process.env.JWT_SECRET,
+        { expiresIn: process.env.JWT_EXPIRES_IN || '24h' }
+    );
+
+    return {
+        token,
+        user: {
+            id: user.id,
+            email: user.email,
+            role: user.role,
+            fullName: user.full_name,
+            status: user.status
+        }
+    };
+}
+
+/**
+ * ĐĂNG NHẬP
  */
 async function login(email, password) {
-    // Bước 1: Tìm user theo email
     const user = await User.findOne({ where: { email } });
     if (!user) {
         throw new Error('Email không tồn tại trong hệ thống.');
     }
 
-    // Bước 2: So sánh mật khẩu với hash trong database
-    // bcrypt.compare() so sánh mật khẩu gốc với hash đã lưu
+    // ============ KIỂM TRA TRẠNG THÁI TÀI KHOẢN ============
+    if (user.status === 'pending') {
+        // Gửi lại OTP
+        await otpService.generateOTP(email, 'register');
+        throw new Error('Tài khoản chưa được xác thực. Mã OTP mới đã được gửi đến email của bạn.');
+    }
+    if (user.status === 'locked') {
+        throw new Error(`Tài khoản bị khóa. Lý do: ${user.locked_reason || 'Vi phạm quy định'}`);
+    }
+    if (user.status === 'deleted') {
+        throw new Error('Tài khoản không tồn tại.');
+    }
+
+    // Verify password
     const isPasswordValid = await bcrypt.compare(password, user.password_hash);
     if (!isPasswordValid) {
         throw new Error('Mật khẩu không chính xác.');
     }
 
-    // Bước 3: Tạo JWT Token
-    // Payload chứa userId và role để các service khác xác định user
-    const tokenPayload = {
-        userId: user.id,
-        role: user.role
-    };
-
-    // Ký token với secret key và thời gian hết hạn từ .env
+    // Tạo JWT Token
     const token = jwt.sign(
-        tokenPayload,
+        { userId: user.id, role: user.role },
         process.env.JWT_SECRET,
         { expiresIn: process.env.JWT_EXPIRES_IN || '24h' }
     );
 
-    // Bước 4: Trả về token và thông tin user
     return {
-        token: token,
+        token,
         user: {
             id: user.id,
             email: user.email,
             role: user.role,
-            fullName: user.full_name
+            fullName: user.full_name,
+            phone: user.phone,
+            avatar: user.avatar,
+            status: user.status
         }
     };
 }
 
-// Export các function để controller sử dụng
+/**
+ * ĐĂNG XUẤT - Thêm token vào blacklist
+ */
+async function logout(token, userId) {
+    const decoded = jwt.decode(token);
+    if (!decoded) throw new Error('Token không hợp lệ');
+
+    await TokenBlacklist.create({
+        token,
+        user_id: userId,
+        expires_at: new Date(decoded.exp * 1000),
+        reason: 'logout'
+    });
+
+    return { message: 'Đăng xuất thành công' };
+}
+
+/**
+ * KIỂM TRA TOKEN CÓ TRONG BLACKLIST
+ */
+async function isTokenBlacklisted(token) {
+    const blacklisted = await TokenBlacklist.findOne({ where: { token } });
+    return !!blacklisted;
+}
+
+/**
+ * QUÊN MẬT KHẨU - Gửi OTP
+ */
+async function forgotPassword(email) {
+    const user = await User.findOne({ where: { email } });
+    if (!user) {
+        throw new Error('Email không tồn tại trong hệ thống.');
+    }
+
+    await otpService.generateOTP(email, 'forgot_password');
+    return { message: 'Mã OTP đã được gửi đến email của bạn.' };
+}
+
+/**
+ * ĐẶT LẠI MẬT KHẨU
+ */
+async function resetPassword(email, otpCode, newPassword) {
+    // Verify OTP
+    await otpService.verifyOTP(email, otpCode, 'forgot_password');
+
+    // Hash password mới
+    const passwordHash = await bcrypt.hash(newPassword, SALT_ROUNDS);
+
+    // Cập nhật password
+    const user = await User.findOne({ where: { email } });
+    await user.update({ password_hash: passwordHash });
+
+    // Blacklist tất cả token cũ của user
+    // (Trong production nên dùng cách khác hiệu quả hơn)
+
+    return { message: 'Đặt lại mật khẩu thành công. Vui lòng đăng nhập lại.' };
+}
+
+/**
+ * ĐỔI MẬT KHẨU (khi đã đăng nhập)
+ */
+async function changePassword(userId, currentPassword, newPassword) {
+    const user = await User.findByPk(userId);
+    if (!user) throw new Error('User không tồn tại');
+
+    // Verify current password
+    const isValid = await bcrypt.compare(currentPassword, user.password_hash);
+    if (!isValid) {
+        throw new Error('Mật khẩu hiện tại không đúng.');
+    }
+
+    // Hash và update
+    const passwordHash = await bcrypt.hash(newPassword, SALT_ROUNDS);
+    await user.update({ password_hash: passwordHash });
+
+    return { message: 'Đổi mật khẩu thành công.' };
+}
+
 module.exports = {
     register,
-    login
+    verifyRegistration,
+    login,
+    logout,
+    isTokenBlacklisted,
+    forgotPassword,
+    resetPassword,
+    changePassword
 };

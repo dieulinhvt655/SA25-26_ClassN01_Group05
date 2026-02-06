@@ -1,19 +1,7 @@
 /**
  * ===========================================
- * USER SERVICE - ENTRY POINT
+ * USER SERVICE - ENTRY POINT (ENHANCED)
  * ===========================================
- * 
- * Đây là file khởi động chính của User Service.
- * Service này xử lý việc xác thực người dùng (Authentication):
- * - Đăng ký tài khoản
- * - Đăng nhập và cấp JWT token
- * 
- * Port: 3002 (cấu hình trong .env)
- * 
- * Cách chạy:
- * 1. npm install
- * 2. Cấu hình file .env (DB credentials, JWT secret)
- * 3. npm run dev
  */
 
 require('dotenv').config();
@@ -21,68 +9,80 @@ const express = require('express');
 const sequelize = require('./config/database');
 const userRoutes = require('./routes/user.routes');
 
+// Import tất cả models để Sequelize sync
+const User = require('./models/user.model');
+const Address = require('./models/address.model');
+const OTP = require('./models/otp.model');
+const TokenBlacklist = require('./models/token-blacklist.model');
+
+// Setup associations
+User.hasMany(Address, { foreignKey: 'user_id', as: 'addresses' });
+Address.belongsTo(User, { foreignKey: 'user_id' });
+
 // Khởi tạo Express app
 const app = express();
 
-// Middleware để parse JSON body
+// Middleware
 app.use(express.json());
 
-// Đăng ký routes
-// Tất cả endpoints sẽ có prefix /api/auth
-// Ví dụ: POST /api/auth/register, POST /api/auth/login
+// CORS
+app.use((req, res, next) => {
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+    if (req.method === 'OPTIONS') return res.sendStatus(200);
+    next();
+});
+
+// Routes
 app.use('/api/auth', userRoutes);
 
-// Route kiểm tra service đang chạy
+// Health check
 app.get('/health', (req, res) => {
     res.json({
         service: 'user-service',
         status: 'running',
+        version: '2.0.0',
+        features: ['auth', 'otp', 'profile', 'address', 'admin'],
         time: new Date().toISOString()
     });
 });
 
-// Lấy port từ .env hoặc mặc định 3002
 const PORT = process.env.PORT || 3002;
 
-/**
- * KHỞI ĐỘNG SERVICE
- * 
- * Quy trình:
- * 1. Kiểm tra kết nối database
- * 2. Sync models (tạo bảng nếu chưa có)
- * 3. Khởi động HTTP server
- */
 async function startServer() {
     try {
-        // Bước 1: Kiểm tra kết nối MySQL
         await sequelize.authenticate();
         console.log('✅ Kết nối MySQL thành công!');
 
-        // Bước 2: Sync models với database
-        // alter: true sẽ cập nhật bảng nếu có thay đổi (development only)
-        // Trong production, dùng migrations thay vì sync
         await sequelize.sync({ alter: true });
         console.log('✅ Đồng bộ database thành công!');
 
-        // Bước 3: Khởi động server
         app.listen(PORT, () => {
             console.log('='.repeat(50));
-            console.log(`🚀 USER SERVICE đang chạy tại port ${PORT}`);
+            console.log(`🚀 USER SERVICE v2.0 đang chạy tại port ${PORT}`);
             console.log('='.repeat(50));
-            console.log('📌 Endpoints:');
-            console.log(`   POST http://localhost:${PORT}/api/auth/register`);
-            console.log(`   POST http://localhost:${PORT}/api/auth/login`);
-            console.log(`   GET  http://localhost:${PORT}/api/auth/me (cần token)`);
-            console.log(`   GET  http://localhost:${PORT}/health`);
+            console.log('📌 Public Endpoints:');
+            console.log(`   POST /api/auth/register`);
+            console.log(`   POST /api/auth/verify-otp`);
+            console.log(`   POST /api/auth/login`);
+            console.log(`   POST /api/auth/forgot-password`);
+            console.log(`   POST /api/auth/reset-password`);
+            console.log('📌 Protected Endpoints:');
+            console.log(`   GET  /api/auth/me`);
+            console.log(`   PUT  /api/auth/profile`);
+            console.log(`   POST /api/auth/logout`);
+            console.log(`   GET  /api/auth/addresses`);
+            console.log('📌 Admin Endpoints:');
+            console.log(`   GET  /api/auth/admin/users`);
+            console.log(`   GET  /api/auth/admin/stats`);
             console.log('='.repeat(50));
         });
 
     } catch (error) {
         console.error('❌ Không thể khởi động service:', error.message);
-        console.error('💡 Kiểm tra lại file .env và đảm bảo MySQL đang chạy.');
         process.exit(1);
     }
 }
 
-// Chạy server
 startServer();
