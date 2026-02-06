@@ -41,11 +41,13 @@ class NotificationService {
         }
 
         // Tạo notification trong database
+        // Nếu là EMAIL type, vẫn lưu vào DB để user có thể xem lại trong app (optional)
+        // Hoặc có thể chỉ lưu PUSH. Ở đây mình lưu cả 2 nhưng với type tương ứng.
         const notification = await notificationRepository.create({
             userId: eventData.userId,
             title: notificationContent.title,
             content: notificationContent.content,
-            type: 'PUSH',  // Mặc định gửi push
+            type: notificationContent.type || 'PUSH',
             status: 'PENDING',
             metadata: {
                 eventType,
@@ -53,14 +55,43 @@ class NotificationService {
             }
         });
 
-        console.log(`✅ Created notification ID: ${notification.id}`);
+        console.log(`✅ Created notification ID: ${notification.id} [${notification.type}]`);
 
-        // Gửi push notification (non-blocking)
-        this._sendPushNotification(notification).catch(err => {
-            console.error('❌ Error sending push:', err.message);
-        });
+        // Xử lý gửi theo type
+        if (notification.type === 'EMAIL') {
+            // Gửi Email Logic
+            const emailAddress = eventData.email;
+            if (emailAddress) {
+                this._sendEmailNotification(emailAddress, notificationContent, notification).catch(err => {
+                    console.error('❌ Error sending email:', err.message);
+                });
+            } else {
+                console.error('⚠️ Missing email address for EMAIL notification');
+            }
+        } else {
+            // Gửi Push Logic (Mặc định)
+            this._sendPushNotification(notification).catch(err => {
+                console.error('❌ Error sending push:', err.message);
+            });
+        }
 
         return notification;
+    }
+
+    /**
+     * Gửi Email notification
+     * @private
+     */
+    async _sendEmailNotification(email, content, notification) {
+        const result = await emailService.send(email, {
+            subject: content.emailSubject || content.title,
+            content: content.content,
+            html: `<p>${content.content}</p>` // Simple HTML template
+        });
+
+        // Cập nhật status
+        const status = result.success ? 'SENT' : 'FAILED';
+        await notificationRepository.updateStatus(notification.id, status);
     }
 
     /**
@@ -71,19 +102,49 @@ class NotificationService {
         const templates = {
             'order.confirmed': {
                 title: '🎉 Đơn hàng đã được xác nhận!',
-                content: `Đơn hàng #${eventData.orderId} từ ${eventData.restaurantName || 'nhà hàng'} đã được xác nhận. Tổng: ${this._formatCurrency(eventData.totalAmount)}`
+                content: `Đơn hàng #${eventData.orderId} từ ${eventData.restaurantName || 'nhà hàng'} đã được xác nhận. Tổng: ${this._formatCurrency(eventData.totalAmount)}`,
+                type: 'PUSH'
+            },
+            'order.cancelled': {
+                title: '❌ Đơn hàng đã bị hủy',
+                content: `Đơn hàng #${eventData.orderId} đã bị hủy. Lý do: ${eventData.reason || 'Không xác định'}.`,
+                type: 'PUSH'
+            },
+            'order.driver_assigned': {
+                title: '🛵 Tài xế đã nhận đơn!',
+                content: `Tài xế ${eventData.driverName} đang đến nhà hàng. Biển số: ${eventData.driverPlate}.`,
+                type: 'PUSH'
+            },
+            'order.picked_up': {
+                title: '🍱 Tài xế đã lấy món!',
+                content: `Tài xế đang giao đến bạn. Vui lòng để ý điện thoại nhé!`,
+                type: 'PUSH'
+            },
+            'order.arrived': {
+                title: '📍 Tài xế đã đến nơi!',
+                content: `Tài xế đang đợi bạn tại điểm giao hàng. Ra nhận món ngay nhé!`,
+                type: 'PUSH'
             },
             'order.delivered': {
                 title: '✅ Đơn hàng đã giao thành công!',
-                content: `Đơn hàng #${eventData.orderId} đã được giao. Cảm ơn bạn đã sử dụng dịch vụ!`
+                content: `Đơn hàng #${eventData.orderId} đã được giao. Cảm ơn bạn đã sử dụng dịch vụ!`,
+                type: 'PUSH'
             },
             'payment.success': {
                 title: '💰 Thanh toán thành công!',
-                content: `Bạn đã thanh toán ${this._formatCurrency(eventData.amount)} qua ${eventData.paymentMethod || 'ví điện tử'}. Mã đơn: #${eventData.orderId}`
+                content: `Bạn đã thanh toán ${this._formatCurrency(eventData.amount)} qua ${eventData.paymentMethod || 'ví điện tử'}. Mã đơn: #${eventData.orderId}`,
+                type: 'PUSH'
             },
             'user.registered': {
                 title: '👋 Chào mừng bạn đến với Yummy!',
-                content: `Xin chào ${eventData.name || 'bạn'}! Hãy khám phá các nhà hàng và đặt món ngon nhé!`
+                content: `Xin chào ${eventData.name || 'bạn'}! Hãy khám phá các nhà hàng và đặt món ngon nhé!`,
+                emailSubject: 'Chào mừng bạn đến với Yummy App! 🍕',
+                type: 'EMAIL' // Ưu tiên gửi email, nhưng vẫn có thể lưu notification
+            },
+            'promotion.new': {
+                title: '🎁 Khuyến mãi mới!',
+                content: `${eventData.title}: ${eventData.description}. Nhập mã: ${eventData.code}`,
+                type: 'PUSH'
             }
         };
 
