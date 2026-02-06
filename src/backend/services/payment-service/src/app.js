@@ -60,14 +60,14 @@ const { startConsumer } = require('./consumers/payment.consumer');
 // happen early in the application lifecycle, before the HTTP server starts listening.
 // This also means the `rabbitmq.connect()` and `startConsumer()` calls
 // inside `startServer` will be removed to avoid duplication.
-rabbitmq.connect().then(() => {
-    console.log('✅ Kết nối RabbitMQ thành công!');
-    console.log('🔄 Đang khởi động event consumer...');
-    startConsumer();
-}).catch(error => {
-    console.error('❌ Lỗi kết nối RabbitMQ hoặc khởi động consumer:', error.message);
-    process.exit(1); // Exit if RabbitMQ connection fails
-});
+// rabbitmq.connect().then(() => {
+//     console.log('✅ Kết nối RabbitMQ thành công!');
+//     console.log('🔄 Đang khởi động event consumer...');
+//     startConsumer();
+// }).catch(error => {
+//     console.error('❌ Lỗi kết nối RabbitMQ hoặc khởi động consumer:', error.message);
+//     process.exit(1); 
+// });
 
 // Khởi tạo Express app
 const app = express();
@@ -141,11 +141,17 @@ const startServer = async () => {
 
         // 2. Kết nối RabbitMQ
         console.log('🔄 Đang kết nối RabbitMQ...');
-        await rabbitmq.connect();
+        try {
+            await rabbitmq.connect();
+            console.log('✅ Kết nối RabbitMQ thành công!');
 
-        // 3. Bắt đầu consume events từ RabbitMQ
-        console.log('🔄 Đang khởi động event consumer...');
-        await startConsumer();
+            // 3. Bắt đầu consume events từ RabbitMQ
+            console.log('🔄 Đang khởi động event consumer...');
+            await startConsumer();
+        } catch (mqError) {
+            console.error('⚠️ Warning: Không thể kết nối RabbitMQ. Service sẽ chạy ở chế độ hạn chế (No Events).');
+            console.error('   Lỗi:', mqError.message);
+        }
 
         // 4. Khởi động HTTP server
         app.listen(PORT, () => {
