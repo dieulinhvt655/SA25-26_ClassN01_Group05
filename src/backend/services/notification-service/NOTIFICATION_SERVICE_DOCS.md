@@ -13,11 +13,6 @@
 - Gửi email notifications (SMTP simulation)
 - Quản lý device tokens (FCM/APNs)
 
-**KHÔNG bao gồm:**
-- Xử lý đơn hàng
-- Thanh toán
-- Quản lý users
-
 ---
 
 ## Kiến trúc Event-Driven
@@ -98,10 +93,10 @@
 
 | Key | Event Source | Notification |
 |-----|--------------|--------------|
-| `order.confirmed` | Order Service | "🎉 Đơn hàng đã được xác nhận!" |
-| `order.delivered` | Order Service | "✅ Đơn hàng đã giao thành công!" |
-| `payment.success` | Payment Service | "💰 Thanh toán thành công!" |
-| `user.registered` | User Service | "👋 Chào mừng bạn đến với Yummy!" |
+| `order.confirmed` | Order Service | "Đơn hàng đã được xác nhận!" |
+| `order.delivered` | Order Service | "Đơn hàng đã giao thành công!" |
+| `payment.success` | Payment Service | "Thanh toán thành công!" |
+| `user.registered` | User Service | "Chào mừng bạn đến với Yummy!" |
 
 ---
 
@@ -344,4 +339,4 @@ notification-service/
 - Service này chạy độc lập trên port **3005**
 - Cần RabbitMQ đang chạy để nhận events
 - Push/Email hiện tại là simulation (chỉ log), cần tích hợp Firebase Admin SDK và SMTP cho production
-- Tất cả ID sử dụng **BIGINT auto-increment** (khác với Restaurant Service dùng UUID)
+- Tất cả ID sử dụng **BIGINT auto-increment**
