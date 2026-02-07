@@ -19,8 +19,6 @@
 const notificationRepository = require('../repositories/notification.repository');
 const deviceTokenRepository = require('../repositories/deviceToken.repository');
 const pushService = require('./push.service');
-const emailService = require('./email.service');
-
 class NotificationService {
     /**
      * Xử lý event từ RabbitMQ và tạo notification
@@ -41,8 +39,7 @@ class NotificationService {
         }
 
         // Tạo notification trong database
-        // Nếu là EMAIL type, vẫn lưu vào DB để user có thể xem lại trong app (optional)
-        // Hoặc có thể chỉ lưu PUSH. Ở đây mình lưu cả 2 nhưng với type tương ứng.
+        // Lưu ý: Ngay cả khi type là EMAIL, ta vẫn lưu vào DB để lịch sử, nhưng sẽ KHÔNG gửi email thực.
         const notification = await notificationRepository.create({
             userId: eventData.userId,
             title: notificationContent.title,
@@ -55,44 +52,24 @@ class NotificationService {
             }
         });
 
-        console.log(`✅ Created notification ID: ${notification.id} [${notification.type}]`);
+        console.log(` Created notification ID: ${notification.id} [${notification.type}]`);
 
-        // Xử lý gửi theo type
+        // Xử lý gửi
         if (notification.type === 'EMAIL') {
-            // Gửi Email Logic
-            const emailAddress = eventData.email;
-            if (emailAddress) {
-                this._sendEmailNotification(emailAddress, notificationContent, notification).catch(err => {
-                    console.error('❌ Error sending email:', err.message);
-                });
-            } else {
-                console.error('⚠️ Missing email address for EMAIL notification');
-            }
+            console.log(' Email notifications are DISABLED. Skipping send.');
+            // Mark as SENT (or SKIPPED) to avoid PENDING forever
+            await notificationRepository.updateStatus(notification.id, 'SENT');
         } else {
             // Gửi Push Logic (Mặc định)
             this._sendPushNotification(notification).catch(err => {
-                console.error('❌ Error sending push:', err.message);
+                console.error(' Error sending push:', err.message);
             });
         }
 
         return notification;
     }
 
-    /**
-     * Gửi Email notification
-     * @private
-     */
-    async _sendEmailNotification(email, content, notification) {
-        const result = await emailService.send(email, {
-            subject: content.emailSubject || content.title,
-            content: content.content,
-            html: `<p>${content.content}</p>` // Simple HTML template
-        });
-
-        // Cập nhật status
-        const status = result.success ? 'SENT' : 'FAILED';
-        await notificationRepository.updateStatus(notification.id, status);
-    }
+    // Removed _sendEmailNotification method
 
     /**
      * Map event type sang nội dung notification
@@ -106,43 +83,43 @@ class NotificationService {
                 type: 'PUSH'
             },
             'order.cancelled': {
-                title: '❌ Đơn hàng đã bị hủy',
+                title: ' Đơn hàng đã bị hủy',
                 content: `Đơn hàng #${eventData.orderId} đã bị hủy. Lý do: ${eventData.reason || 'Không xác định'}.`,
                 type: 'PUSH'
             },
             'order.driver_assigned': {
-                title: '🛵 Tài xế đã nhận đơn!',
+                title: ' Tài xế đã nhận đơn!',
                 content: `Tài xế ${eventData.driverName} đang đến nhà hàng. Biển số: ${eventData.driverPlate}.`,
                 type: 'PUSH'
             },
             'order.picked_up': {
-                title: '🍱 Tài xế đã lấy món!',
+                title: ' Tài xế đã lấy món!',
                 content: `Tài xế đang giao đến bạn. Vui lòng để ý điện thoại nhé!`,
                 type: 'PUSH'
             },
             'order.arrived': {
-                title: '📍 Tài xế đã đến nơi!',
+                title: 'Tài xế đã đến nơi!',
                 content: `Tài xế đang đợi bạn tại điểm giao hàng. Ra nhận món ngay nhé!`,
                 type: 'PUSH'
             },
             'order.delivered': {
-                title: '✅ Đơn hàng đã giao thành công!',
+                title: ' Đơn hàng đã giao thành công!',
                 content: `Đơn hàng #${eventData.orderId} đã được giao. Cảm ơn bạn đã sử dụng dịch vụ!`,
                 type: 'PUSH'
             },
             'payment.success': {
-                title: '💰 Thanh toán thành công!',
+                title: ' Thanh toán thành công!',
                 content: `Bạn đã thanh toán ${this._formatCurrency(eventData.amount)} qua ${eventData.paymentMethod || 'ví điện tử'}. Mã đơn: #${eventData.orderId}`,
                 type: 'PUSH'
             },
             'user.registered': {
-                title: '👋 Chào mừng bạn đến với Yummy!',
+                title: 'Chào mừng bạn đến với Yummy!',
                 content: `Xin chào ${eventData.name || 'bạn'}! Hãy khám phá các nhà hàng và đặt món ngon nhé!`,
                 emailSubject: 'Chào mừng bạn đến với Yummy App! 🍕',
                 type: 'EMAIL' // Ưu tiên gửi email, nhưng vẫn có thể lưu notification
             },
             'promotion.new': {
-                title: '🎁 Khuyến mãi mới!',
+                title: ' Khuyến mãi mới!',
                 content: `${eventData.title}: ${eventData.description}. Nhập mã: ${eventData.code}`,
                 type: 'PUSH'
             }
@@ -172,7 +149,7 @@ class NotificationService {
         const tokens = await deviceTokenRepository.findActiveByUserId(notification.userId);
 
         if (tokens.length === 0) {
-            console.log(`⚠️ User ${notification.userId} không có device tokens`);
+            console.log(` User ${notification.userId} không có device tokens`);
             // Vẫn đánh dấu SENT vì notification đã được lưu
             await notificationRepository.updateStatus(notification.id, 'SENT');
             return;

@@ -27,3 +27,6 @@ Thumbs.db
 dist/
 build/
 
+
+# Firebase credentials
+firebase-adminsdk.json

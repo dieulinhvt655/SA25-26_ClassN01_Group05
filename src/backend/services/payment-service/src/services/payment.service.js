@@ -44,7 +44,7 @@ class PaymentService {
                 // Giả lập: COD coi như OK để process đơn hàng
                 // Ta có thể update status thành PENDING (mặc định) và gửi event payment.processed
 
-                console.log('   ℹ️ COD payment initialized. Waiting for delivery.');
+                console.log('COD payment initialized. Waiting for delivery.');
                 // Gửi event Payment Pending/Success tùy logic. 
                 // Ở đây giả sử Order Service cần payment.success để confirm đơn hàng.
                 // Với COD, "thanh toán" chưa diễn ra nhưng "cam kết thanh toán" đã có.
@@ -54,7 +54,7 @@ class PaymentService {
             } else {
                 // Online Payment (Momo, ZaloPay, ...)
                 // Giả lập gọi Gateway
-                console.log(`   ⏳ Initiating ${method} payment gateway...`);
+                console.log(` Initiating ${method} payment gateway...`);
 
                 // Simulation: Delay 2s rồi random success/fail
                 setTimeout(async () => {
@@ -71,7 +71,7 @@ class PaymentService {
             return payment;
 
         } catch (error) {
-            console.error('❌ Error creating payment:', error.message);
+            console.error('Error creating payment:', error.message);
             // Gửi event failed nếu không tạo được
             this._publishEvent('payment.failed', {
                 orderId: eventData.orderId,
@@ -87,7 +87,7 @@ class PaymentService {
     async completePayment(paymentId, status, transactionRef) {
         try {
             const payment = await paymentRepository.updateStatus(paymentId, status, transactionRef);
-            console.log(`✅ Payment ${status}: Order #${payment.orderId}`);
+            console.log(`Payment ${status}: Order #${payment.orderId}`);
 
             // Gửi event
             this._publishEvent('payment.success', {
@@ -99,7 +99,7 @@ class PaymentService {
             });
 
         } catch (error) {
-            console.error('❌ Error completing payment:', error.message);
+            console.error('Error completing payment:', error.message);
         }
     }
 
@@ -112,7 +112,7 @@ class PaymentService {
             // Log lý do vào history
             await paymentRepository.addTransactionHistory(paymentId, 'PENDING', 'FAILED', reason);
 
-            console.log(`❌ Payment FAILED: Order #${payment.orderId}, Reason: ${reason}`);
+            console.log(` Payment FAILED: Order #${payment.orderId}, Reason: ${reason}`);
 
             // Gửi event
             this._publishEvent('payment.failed', {
@@ -122,7 +122,7 @@ class PaymentService {
             });
 
         } catch (error) {
-            console.error('❌ Error failing payment:', error.message);
+            console.error('Error failing payment:', error.message);
         }
     }
 
@@ -132,13 +132,13 @@ class PaymentService {
     _publishEvent(routingKey, payload) {
         const channel = getChannel();
         if (!channel) {
-            console.error('❌ RabbitMQ channel not available');
+            console.error(' RabbitMQ channel not available');
             return;
         }
 
         const message = JSON.stringify(payload);
         channel.publish(EXCHANGE_NAME, routingKey, Buffer.from(message));
-        console.log(`📤 Published: ${routingKey}`);
+        console.log(`Published: ${routingKey}`);
     }
 }
 

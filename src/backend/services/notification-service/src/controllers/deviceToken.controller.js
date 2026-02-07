@@ -30,7 +30,7 @@ class DeviceTokenController {
                 data: deviceToken
             });
         } catch (error) {
-            console.error('❌ Error registering token:', error.message);
+            console.error('Error registering token:', error.message);
             res.status(400).json({
                 success: false,
                 message: error.message
@@ -53,7 +53,7 @@ class DeviceTokenController {
                 message: 'Đã xóa device token'
             });
         } catch (error) {
-            console.error('❌ Error removing token:', error.message);
+            console.error('Error removing token:', error.message);
             res.status(404).json({
                 success: false,
                 message: error.message
@@ -83,7 +83,7 @@ class DeviceTokenController {
                 data: tokens
             });
         } catch (error) {
-            console.error('❌ Error getting tokens:', error.message);
+            console.error('Error getting tokens:', error.message);
             res.status(500).json({
                 success: false,
                 message: error.message

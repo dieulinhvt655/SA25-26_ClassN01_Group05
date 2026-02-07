@@ -14,7 +14,7 @@ const startConsumer = async () => {
         return;
     }
 
-    console.log(`\n🎧 Payment Service listening on ${QUEUE_NAME}`);
+    console.log(`\nPayment Service listening on ${QUEUE_NAME}`);
 
     await channel.prefetch(1);
 
@@ -25,13 +25,13 @@ const startConsumer = async () => {
             const content = JSON.parse(message.content.toString());
             const routingKey = message.fields.routingKey;
 
-            console.log(`\n📩 Received: ${routingKey}`);
+            console.log(`\nReceived: ${routingKey}`);
 
             if (routingKey === 'order.created') {
                 await paymentService.processPaymentRequest(content);
             } else if (routingKey === 'order.cancelled') {
                 // Handle refund logic if needed
-                console.log('ℹ️ Order cancelled event received. Implementation pending.');
+                console.log('Order cancelled event received. Implementation pending.');
             }
 
             channel.ack(message);

@@ -63,7 +63,7 @@ const connect = async () => {
             console.log(`📌 Đã bind queue với routing key: ${routingKey}`);
         }
 
-        console.log('✅ RabbitMQ exchange và queue đã sẵn sàng!');
+        console.log('RabbitMQ exchange và queue đã sẵn sàng!');
 
         // Xử lý khi connection bị đóng
         connection.on('close', () => {
@@ -71,12 +71,12 @@ const connect = async () => {
         });
 
         connection.on('error', (err) => {
-            console.error('❌ RabbitMQ connection error:', err.message);
+            console.error('RabbitMQ connection error:', err.message);
         });
 
         return { connection, channel };
     } catch (error) {
-        console.error('❌ Không thể kết nối RabbitMQ:', error.message);
+        console.error('Không thể kết nối RabbitMQ:', error.message);
         throw error;
     }
 };
@@ -100,9 +100,9 @@ const close = async () => {
     try {
         if (channel) await channel.close();
         if (connection) await connection.close();
-        console.log('✅ Đã đóng kết nối RabbitMQ');
+        console.log('Đã đóng kết nối RabbitMQ');
     } catch (error) {
-        console.error('❌ Lỗi khi đóng RabbitMQ:', error.message);
+        console.error('Lỗi khi đóng RabbitMQ:', error.message);
     }
 };
 

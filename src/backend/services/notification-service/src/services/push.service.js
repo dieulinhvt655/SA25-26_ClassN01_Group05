@@ -1,80 +1,130 @@
 /**
- * Push Service (Firebase Cloud Messaging simulation)
+ * Push Service (Firebase Cloud Messaging)
  * 
  * Chịu trách nhiệm:
- * - Gửi push notifications đến mobile devices
- * - Trong môi trường development, chỉ simulate việc gửi
- * - Production sẽ tích hợp Firebase Admin SDK
- * 
- * TẠI SAO CẦN SERVICE RIÊNG?
- * - Tách biệt logic gửi push ra khỏi business logic
- * - Dễ dàng thay đổi provider (Firebase, OneSignal, etc.)
- * - Dễ mock trong testing
+ * - Gửi push notifications thực tế đến mobile devices qua FCM
+ * - Yêu cầu file cấu hình firebase-adminsdk.json
  */
 
+const admin = require('firebase-admin');
+const path = require('path');
+const fs = require('fs');
+
 class PushService {
+    constructor() {
+        this.initialized = false;
+        this._initializeFirebase();
+    }
+
+    _initializeFirebase() {
+        try {
+            // Đường dẫn đến file service account
+            // User cần tải file này từ Firebase Console -> Project Settings -> Service Accounts
+            const serviceAccountPath = path.resolve(__dirname, '../../firebase-adminsdk.json');
+
+            if (fs.existsSync(serviceAccountPath)) {
+                const serviceAccount = require(serviceAccountPath);
+
+                if (!admin.apps.length) {
+                    admin.initializeApp({
+                        credential: admin.credential.cert(serviceAccount)
+                    });
+                }
+                this.initialized = true;
+                console.log('Firebase Admin SDK initialized successfully');
+            } else {
+                console.warn('Firebase Admin SDK not initialized: Missing firebase-adminsdk.json');
+                console.warn('Push notifications will be SIMULATED (Logged to console only)');
+            }
+        } catch (error) {
+            console.error('Error initializing Firebase:', error.message);
+        }
+    }
+
     /**
      * Gửi push notification đến một device
-     * @param {string} token - FCM/APNs token
+     * @param {string} token - FCM Token
      * @param {Object} payload - { title, content, data }
-     * @returns {Promise<{success: boolean, messageId?: string}>}
      */
     async sendToDevice(token, payload) {
-        const { title, content, data } = payload;
+        // Nếu chưa init được Firebase hoặc không có credentials, fallback về simulation log
+        if (!this.initialized) {
+            return this._simulateSend(token, payload);
+        }
 
-        // Simulation: Log ra console thay vì gửi thật
-        console.log('📱 [PUSH SIMULATION] Sending to device:');
-        console.log(`   Token: ${token.substring(0, 20)}...`);
-        console.log(`   Title: ${title}`);
-        console.log(`   Content: ${content}`);
-        console.log(`   Data: ${JSON.stringify(data || {})}`);
+        try {
+            const message = {
+                token: token,
+                notification: {
+                    title: payload.title,
+                    body: payload.content
+                },
+                data: payload.data || {}
+            };
 
-        // Simulate network delay và success/failure
-        await this._simulateDelay();
-
-        // 95% success rate simulation
-        if (Math.random() > 0.05) {
-            const messageId = `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-            console.log(`   ✅ Sent successfully! MessageId: ${messageId}`);
+            const messageId = await admin.messaging().send(message);
+            console.log(`Push sent to ${token.substr(0, 10)}... | MsgId: ${messageId}`);
             return { success: true, messageId };
-        } else {
-            console.log(`   ❌ Failed to send (simulated failure)`);
-            return { success: false, error: 'Simulated push failure' };
+
+        } catch (error) {
+            console.error(`Push failed to ${token.substr(0, 10)}...:`, error.message);
+            return { success: false, error: error.message };
         }
     }
 
     /**
-     * Gửi push notification đến nhiều devices
-     * @param {string[]} tokens - Mảng FCM/APNs tokens
+     * Gửi push notification đến nhiều devices (Multicast)
+     * @param {string[]} tokens - Mảng FCM Tokens
      * @param {Object} payload - { title, content, data }
-     * @returns {Promise<{successCount, failureCount}>}
      */
     async sendToMultipleDevices(tokens, payload) {
-        console.log(`📱 [PUSH SIMULATION] Sending to ${tokens.length} devices...`);
+        if (!tokens || tokens.length === 0) return { successCount: 0, failureCount: 0 };
 
-        let successCount = 0;
-        let failureCount = 0;
-
-        for (const token of tokens) {
-            const result = await this.sendToDevice(token, payload);
-            if (result.success) {
-                successCount++;
-            } else {
-                failureCount++;
-            }
+        if (!this.initialized) {
+            console.log(`[PUSH FALLBACK] Firebase not init. Simulating send to ${tokens.length} devices.`);
+            return { successCount: tokens.length, failureCount: 0 };
         }
 
-        console.log(`📱 [PUSH SIMULATION] Complete: ${successCount} success, ${failureCount} failed`);
-        return { successCount, failureCount };
+        try {
+            const message = {
+                notification: {
+                    title: payload.title,
+                    body: payload.content
+                },
+                data: payload.data || {},
+                tokens: tokens
+            };
+
+            const response = await admin.messaging().sendEachForMulticast(message);
+
+            if (response.failureCount > 0) {
+                console.log(`Push Partial Failure: ${response.failureCount}/${tokens.length} failed.`);
+                response.responses.forEach((resp, idx) => {
+                    if (!resp.success) {
+                        // Có thể xử lý xóa token lỗi tại đây nếu cần (ví dụ: error.code === 'messaging/registration-token-not-registered')
+                        // console.log(`   Tokens[${idx}] failed: ${resp.error.message}`);
+                    }
+                });
+            } else {
+                console.log(`Push Multicast: ${response.successCount} sent successfully.`);
+            }
+
+            return {
+                successCount: response.successCount,
+                failureCount: response.failureCount
+            };
+        } catch (error) {
+            console.error('Push Multicast Error:', error.message);
+            return { successCount: 0, failureCount: tokens.length };
+        }
     }
 
-    /**
-     * Simulate network delay
-     * @private
-     */
-    async _simulateDelay() {
-        const delay = Math.random() * 200 + 50;  // 50-250ms
-        return new Promise(resolve => setTimeout(resolve, delay));
+    // Fallback simulation khi không có credentials
+    async _simulateSend(token, payload) {
+        console.log(' [PUSH SIMULATED] (No Firebase Creds)');
+        console.log(`   To: ${token.substr(0, 15)}...`);
+        console.log(`   Title: ${payload.title}`);
+        return { success: true, messageId: 'simulated_msg_id' };
     }
 }
 

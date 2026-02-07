@@ -126,11 +126,16 @@ const startServer = async () => {
 
         // 2. Kết nối RabbitMQ
         console.log('🔄 Đang kết nối RabbitMQ...');
-        await rabbitmq.connect();
+        try {
+            await rabbitmq.connect();
 
-        // 3. Bắt đầu consume events từ RabbitMQ
-        console.log('🔄 Đang khởi động event consumer...');
-        await startConsumer();
+            // 3. Bắt đầu consume events từ RabbitMQ
+            console.log('🔄 Đang khởi động event consumer...');
+            await startConsumer();
+        } catch (mqError) {
+            console.error('⚠️ Warning: Không thể kết nối RabbitMQ. Service sẽ chạy ở chế độ hạn chế (No Events).');
+            console.error('   Lỗi:', mqError.message);
+        }
 
         // 4. Khởi động HTTP server
         app.listen(PORT, () => {

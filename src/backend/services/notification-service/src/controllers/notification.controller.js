@@ -33,7 +33,7 @@ class NotificationController {
                 ...result
             });
         } catch (error) {
-            console.error('❌ Error getting notifications:', error.message);
+            console.error('Error getting notifications:', error.message);
             res.status(500).json({
                 success: false,
                 message: error.message
@@ -57,7 +57,7 @@ class NotificationController {
                 data: notification
             });
         } catch (error) {
-            console.error('❌ Error marking as read:', error.message);
+            console.error('Error marking as read:', error.message);
             res.status(404).json({
                 success: false,
                 message: error.message
@@ -87,7 +87,7 @@ class NotificationController {
                 message: `Đã đánh dấu ${count} notifications là đã đọc`
             });
         } catch (error) {
-            console.error('❌ Error marking all as read:', error.message);
+            console.error('Error marking all as read:', error.message);
             res.status(500).json({
                 success: false,
                 message: error.message
@@ -117,7 +117,7 @@ class NotificationController {
                 data: { unreadCount: count }
             });
         } catch (error) {
-            console.error('❌ Error getting unread count:', error.message);
+            console.error('Error getting unread count:', error.message);
             res.status(500).json({
                 success: false,
                 message: error.message
